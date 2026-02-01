@@ -3,11 +3,15 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(req: NextRequest) {
   try {
-    const id = req.nextUrl.searchParams.get('id')
+    const idParam = req.nextUrl.searchParams.get('id')
     const sessionId = req.nextUrl.searchParams.get('sessionId') || 'default'
     const limit = parseInt(req.nextUrl.searchParams.get('limit') || '20')
 
-    if (id) {
+    if (idParam) {
+      const id = parseInt(idParam, 10)
+      if (isNaN(id)) {
+        return NextResponse.json({ error: 'Invalid conversation ID' }, { status: 400 })
+      }
       // Get single conversation with messages
       const conversation = await prisma.conversation.findUnique({
         where: { id },
@@ -64,10 +68,15 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const id = req.nextUrl.searchParams.get('id')
+    const idParam = req.nextUrl.searchParams.get('id')
 
-    if (!id) {
+    if (!idParam) {
       return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 })
+    }
+
+    const id = parseInt(idParam, 10)
+    if (isNaN(id)) {
+      return NextResponse.json({ error: 'Invalid conversation ID' }, { status: 400 })
     }
 
     await prisma.conversation.delete({

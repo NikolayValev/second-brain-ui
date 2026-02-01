@@ -168,11 +168,12 @@ export default function AskPage() {
           <ScrollArea className="flex-1">
             <div className="p-2 space-y-1">
               {conversations.map((conv) => (
-                <div
+                <button
                   key={conv.id}
+                  type="button"
                   onClick={() => loadConversation(conv.id)}
                   className={cn(
-                    'flex items-center gap-2 p-3 rounded-lg cursor-pointer hover:bg-muted group',
+                    'flex items-center gap-2 p-3 rounded-lg cursor-pointer hover:bg-muted group w-full text-left select-none',
                     currentConversation?.id === conv.id && 'bg-muted'
                   )}
                 >
@@ -180,13 +181,15 @@ export default function AskPage() {
                   <span className="flex-1 truncate text-sm">
                     {conv.title || 'New conversation'}
                   </span>
-                  <button
+                  <span
+                    role="button"
+                    tabIndex={-1}
                     onClick={(e) => deleteConversation(conv.id, e)}
                     className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/20 rounded"
                   >
                     <Trash2 className="h-3 w-3 text-destructive" />
-                  </button>
-                </div>
+                  </span>
+                </button>
               ))}
               {conversations.length === 0 && (
                 <p className="text-sm text-muted-foreground text-center py-4">
