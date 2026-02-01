@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { TagList } from '@/components/TagPill'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { ChevronLeft, Calendar, FileText, Link as LinkIcon } from 'lucide-react'
@@ -62,14 +62,14 @@ export default async function NotePage({ params }: PageProps) {
   }
 
   const backlinks = await getBacklinks(filePath)
-  const tags = file.tags.map((ft) => ft.tag.name)
-  const content = file.sections.map((s) => {
-    const heading = s.level > 0 ? `${'#'.repeat(s.level)} ${s.heading}\n\n` : ''
-    return heading + s.content
-  }).join('\n\n')
-
-  // Extract frontmatter for display
-  const frontmatter = file.frontmatter as Record<string, unknown> | null
+  const tags = file.tags.map((ft: { tag: { name: string } }) => ft.tag.name)
+  // Use sections if available, otherwise use file content
+  const content = file.sections.length > 0 
+    ? file.sections.map((s: { level: number; heading: string; content: string }) => {
+        const heading = s.level > 0 ? `${'#'.repeat(s.level)} ${s.heading}\n\n` : ''
+        return heading + s.content
+      }).join('\n\n')
+    : (file as unknown as { content?: string }).content || ''
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
@@ -94,7 +94,7 @@ export default async function NotePage({ params }: PageProps) {
           </div>
           <div className="flex items-center gap-1">
             <Calendar className="h-4 w-4" />
-            <span>Modified {formatDate(file.modifiedAt)}</span>
+            <span>Created {formatDate(file.createdAt)}</span>
           </div>
         </div>
         {tags.length > 0 && (
@@ -103,27 +103,6 @@ export default async function NotePage({ params }: PageProps) {
           </div>
         )}
       </div>
-
-      {/* Frontmatter */}
-      {frontmatter && Object.keys(frontmatter).length > 0 && (
-        <Card className="mb-6 bg-muted/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Metadata</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-              {Object.entries(frontmatter).map(([key, value]) => (
-                <div key={key}>
-                  <span className="text-muted-foreground">{key}: </span>
-                  <span className="font-medium">
-                    {Array.isArray(value) ? value.join(', ') : String(value)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Content */}
       <Card className="mb-6">
@@ -142,7 +121,7 @@ export default async function NotePage({ params }: PageProps) {
               Backlinks ({backlinks.length})
             </h2>
             <div className="grid gap-2">
-              {backlinks.map((link) => (
+              {backlinks.map((link: { id: number; path: string; title: string | null }) => (
                 <Link key={link.id} href={`/notes/${link.path}`}>
                   <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
                     <CardContent className="p-3 flex items-center gap-2">

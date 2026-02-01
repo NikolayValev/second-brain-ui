@@ -11,16 +11,16 @@ datasource db {
 }
 
 model File {
-  id          Int       @id @default(autoincrement())
-  path        String    @unique
-  title       String?
-  contentHash String?   @map("content_hash")
-  frontmatter Json?
-  createdAt   DateTime  @default(now()) @map("created_at")
-  modifiedAt  DateTime  @default(now()) @map("modified_at")
-  sections    Section[]
-  tags        FileTag[]
-  chunks      Chunk[]
+  id        Int       @id @default(autoincrement())
+  path      String    @unique
+  mtime     Float
+  title     String
+  content   String
+  createdAt DateTime
+  updatedAt DateTime
+  sections  Section[]
+  tags      FileTag[]
+  chunks    Chunk[]
 
   @@map("files")
 }
@@ -67,8 +67,8 @@ model Chunk {
 }
 
 model Conversation {
-  id        String    @id @default(uuid())
-  sessionId String    @map("session_id")
+  id        Int       @id @default(autoincrement())
+  sessionId String?   @map("session_id")
   title     String?
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -78,8 +78,8 @@ model Conversation {
 }
 
 model Message {
-  id             String       @id @default(uuid())
-  conversationId String       @map("conversation_id")
+  id             Int          @id @default(autoincrement())
+  conversationId Int          @map("conversation_id")
   role           String       // "user" | "assistant"
   content        String
   sources        Json?

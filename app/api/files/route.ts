@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
         sections: { take: 1, orderBy: { id: 'asc' } },
       },
       take: limit,
-      orderBy: { modifiedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     })
 
     return NextResponse.json({ files })

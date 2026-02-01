@@ -113,7 +113,9 @@ async function generateFallbackResponse(question: string): Promise<string> {
   }
 
   const relevantContent = files
-    .flatMap((f) => f.sections.map((s) => `**${f.title || f.path}**: ${s.content.slice(0, 200)}...`))
+    .flatMap((f: { title: string | null; path: string; sections: { content: string }[] }) => 
+      f.sections.map((s: { content: string }) => `**${f.title || f.path}**: ${s.content.slice(0, 200)}...`)
+    )
     .slice(0, 3)
     .join('\n\n')
 

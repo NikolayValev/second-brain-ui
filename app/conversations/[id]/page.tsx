@@ -50,7 +50,8 @@ export default async function ConversationPage({ params }: PageProps) {
       {/* Messages */}
       <ScrollArea className="flex-1">
         <div className="divide-y">
-          {conversation.messages.map((message) => (
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {conversation.messages.map((message: any) => (
             <ChatMessage
               key={message.id}
               role={message.role as 'user' | 'assistant'}

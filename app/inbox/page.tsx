@@ -45,10 +45,11 @@ export default async function InboxPage() {
 
       {inboxFiles.length > 0 ? (
         <div className="space-y-3">
-          {inboxFiles.map((file) => {
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {inboxFiles.map((file: any) => {
             const displayTitle = file.title || file.path.split('/').pop()?.replace('.md', '') || 'Untitled'
-            const snippet = file.sections[0]?.content.slice(0, 200) || ''
-            const tags = file.tags.map((ft) => ft.tag.name)
+            const snippet = file.sections[0]?.content?.slice(0, 200) || ''
+            const tags = file.tags.map((ft: { tag: { name: string } }) => ft.tag.name)
 
             return (
               <Link key={file.id} href={`/notes/${file.path}`}>
@@ -72,7 +73,7 @@ export default async function InboxPage() {
                           </div>
                           {tags.length > 0 && (
                             <div className="flex gap-1">
-                              {tags.slice(0, 3).map((tag) => (
+                              {tags.slice(0, 3).map((tag: string) => (
                                 <Badge key={tag} variant="outline" className="text-xs">
                                   {tag}
                                 </Badge>

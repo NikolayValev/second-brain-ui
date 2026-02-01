@@ -28,15 +28,16 @@ async function getRecentNotes() {
         sections: { take: 1, orderBy: { id: 'asc' } },
       },
       take: 10,
-      orderBy: { modifiedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     })
-    return files.map((file) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return files.map((file: any) => ({
       id: file.id,
       path: file.path,
       title: file.title,
-      snippet: file.sections[0]?.content.slice(0, 200) || '',
-      tags: file.tags.map((ft) => ft.tag.name),
-      modifiedAt: file.modifiedAt,
+      snippet: file.sections[0]?.content?.slice(0, 200) || '',
+      tags: file.tags.map((ft: { tag: { name: string } }) => ft.tag.name),
+      modifiedAt: file.createdAt,
     }))
   } catch {
     return []

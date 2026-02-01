@@ -40,16 +40,17 @@ export async function GET(req: NextRequest) {
         },
       },
       take: limit,
-      orderBy: { modifiedAt: 'desc' },
+      orderBy: { createdAt: 'desc' },
     })
 
-    const results = files.map((file) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results = files.map((file: any) => ({
       id: file.id,
       path: file.path,
       title: file.title,
-      snippet: file.sections[0]?.content.slice(0, 200) || '',
-      tags: file.tags.map((ft) => ft.tag.name),
-      modifiedAt: file.modifiedAt,
+      snippet: file.sections[0]?.content?.slice(0, 200) || '',
+      tags: file.tags.map((ft: { tag: { name: string } }) => ft.tag.name),
+      modifiedAt: file.createdAt,
     }))
 
     return NextResponse.json({ results })
