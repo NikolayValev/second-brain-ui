@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model File {
+  id          Int       @id @default(autoincrement())
+  path        String    @unique
+  title       String?
+  contentHash String?   @map("content_hash")
+  frontmatter Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  modifiedAt  DateTime  @default(now()) @map("modified_at")
+  sections    Section[]
+  tags        FileTag[]
+  chunks      Chunk[]
+
+  @@map("files")
+}
+
+model Section {
+  id      Int    @id @default(autoincrement())
+  fileId  Int    @map("file_id")
+  heading String
+  level   Int
+  content String
+  file    File   @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@map("sections")
+}
+
+model Tag {
+  id    Int       @id @default(autoincrement())
+  name  String    @unique
+  files FileTag[]
+
+  @@map("tags")
+}
+
+model FileTag {
+  fileId Int  @map("file_id")
+  tagId  Int  @map("tag_id")
+  file   File @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  tag    Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([fileId, tagId])
+  @@map("file_tags")
+}
+
+model Chunk {
+  id        Int      @id @default(autoincrement())
+  fileId    Int      @map("file_id")
+  content   String
+  embedding Bytes?
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  file      File     @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@map("chunks")
+}
+
+model Conversation {
+  id        String    @id @default(uuid())
+  sessionId String    @map("session_id")
+  title     String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  messages  Message[]
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String       @map("conversation_id")
+  role           String       // "user" | "assistant"
+  content        String
+  sources        Json?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
