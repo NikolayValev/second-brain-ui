@@ -6,7 +6,14 @@ const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { question, conversationId, sessionId = 'default' } = body
+    const { 
+      question, 
+      conversationId, 
+      sessionId = 'default',
+      provider = 'ollama',
+      model = 'llama3.2',
+      ragTechnique = 'basic'
+    } = body
 
     if (!question) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 })
@@ -20,7 +27,13 @@ export async function POST(req: NextRequest) {
       const response = await fetch(`${PYTHON_API_URL}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, conversation_id: conversationId }),
+        body: JSON.stringify({ 
+          question, 
+          conversation_id: conversationId,
+          provider,
+          model,
+          rag_technique: ragTechnique,
+        }),
       })
 
       if (response.ok) {

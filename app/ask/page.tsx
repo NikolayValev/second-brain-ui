@@ -6,7 +6,16 @@ import { ChatMessage, ChatInput } from '@/components/ChatMessage'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Plus, MessageCircle, Trash2, ChevronLeft } from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Plus, MessageCircle, Trash2, ChevronLeft, Settings2, Bot, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Message, Source } from '@/lib/types'
 
@@ -17,6 +26,37 @@ interface Conversation {
   messages: Message[]
 }
 
+interface ModelConfig {
+  id: string
+  name: string
+  provider: string
+  available: boolean
+}
+
+interface ProviderConfig {
+  id: string
+  name: string
+  available: boolean
+  models: ModelConfig[]
+}
+
+interface RAGTechnique {
+  id: string
+  name: string
+  description: string
+}
+
+interface ConfigData {
+  providers: ProviderConfig[]
+  allProviders: ProviderConfig[]
+  ragTechniques: RAGTechnique[]
+  defaults: {
+    provider: string
+    model: string
+    ragTechnique: string
+  }
+}
+
 export default function AskPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null)
@@ -24,8 +64,32 @@ export default function AskPage() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [showSidebar, setShowSidebar] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
+
+  // Model/Provider state
+  const [config, setConfig] = useState<ConfigData | null>(null)
+  const [selectedProvider, setSelectedProvider] = useState<string>('')
+  const [selectedModel, setSelectedModel] = useState<string>('')
+  const [selectedRAG, setSelectedRAG] = useState<string>('')
+
+  // Load config
+  useEffect(() => {
+    async function loadConfig() {
+      try {
+        const response = await fetch('/api/config')
+        const data = await response.json()
+        setConfig(data)
+        setSelectedProvider(data.defaults.provider)
+        setSelectedModel(data.defaults.model)
+        setSelectedRAG(data.defaults.ragTechnique)
+      } catch (error) {
+        console.error('Failed to load config:', error)
+      }
+    }
+    loadConfig()
+  }, [])
 
   // Load conversations
   useEffect(() => {
@@ -103,6 +167,9 @@ export default function AskPage() {
         body: JSON.stringify({
           question: userMessage.content,
           conversationId: currentConversation?.id,
+          provider: selectedProvider,
+          model: selectedModel,
+          ragTechnique: selectedRAG,
         }),
       })
 
@@ -260,12 +327,114 @@ export default function AskPage() {
         </ScrollArea>
 
         {/* Input */}
-        <ChatInput
-          value={input}
-          onChange={setInput}
-          onSubmit={handleSubmit}
-          isLoading={isLoading}
-        />
+        <div className="border-t">
+          {/* Settings Toggle & Panel */}
+          <div className="px-4 pt-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSettings(!showSettings)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Settings2 className="h-4 w-4 mr-2" />
+              Model Settings
+              {selectedProvider && selectedModel && (
+                <span className="ml-2 text-xs bg-muted px-2 py-0.5 rounded">
+                  {config?.providers.find(p => p.id === selectedProvider)?.name}: {selectedModel}
+                </span>
+              )}
+            </Button>
+            
+            {showSettings && config && (
+              <div className="mt-3 p-4 bg-muted/50 rounded-lg space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Provider Selection */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Bot className="h-4 w-4" />
+                      Provider
+                    </label>
+                    <Select value={selectedProvider} onValueChange={(value) => {
+                      setSelectedProvider(value)
+                      // Reset model to first available for this provider
+                      const provider = config.providers.find(p => p.id === value)
+                      if (provider && provider.models.length > 0) {
+                        setSelectedModel(provider.models[0].id)
+                      }
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select provider" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {config.providers.map((provider) => (
+                          <SelectItem key={provider.id} value={provider.id}>
+                            {provider.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Model Selection */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <Sparkles className="h-4 w-4" />
+                      Model
+                    </label>
+                    <Select value={selectedModel} onValueChange={setSelectedModel}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {config.providers
+                          .find(p => p.id === selectedProvider)
+                          ?.models.map((model) => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* RAG Technique Selection */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4" />
+                      RAG Technique
+                    </label>
+                    <Select value={selectedRAG} onValueChange={setSelectedRAG}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select technique" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {config.ragTechniques.map((technique) => (
+                          <SelectItem key={technique.id} value={technique.id}>
+                            <div className="flex flex-col">
+                              <span>{technique.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedRAG && (
+                      <p className="text-xs text-muted-foreground">
+                        {config.ragTechniques.find(t => t.id === selectedRAG)?.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <ChatInput
+            value={input}
+            onChange={setInput}
+            onSubmit={handleSubmit}
+            isLoading={isLoading}
+          />
+        </div>
       </div>
 
       {/* Backdrop for mobile sidebar */}

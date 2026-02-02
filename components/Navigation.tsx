@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Search, MessageCircle, Inbox, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: Home },
@@ -17,6 +18,17 @@ export function Navigation() {
 
   return (
     <>
+      {/* Mobile top header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b md:hidden">
+        <div className="flex items-center justify-between h-14 px-4">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-bold">Second Brain</h1>
+          </div>
+          <ThemeToggle />
+        </div>
+      </header>
+
       {/* Mobile bottom navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t md:hidden">
         <div className="flex justify-around items-center h-16">
@@ -42,9 +54,12 @@ export function Navigation() {
 
       {/* Desktop sidebar */}
       <aside className="hidden md:flex fixed left-0 top-0 h-full w-64 flex-col border-r bg-background p-4">
-        <div className="flex items-center gap-2 mb-8">
-          <FileText className="h-6 w-6 text-primary" />
-          <h1 className="text-xl font-bold">Second Brain</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-2">
+            <FileText className="h-6 w-6 text-primary" />
+            <h1 className="text-xl font-bold">Second Brain</h1>
+          </div>
+          <ThemeToggle />
         </div>
         <nav className="flex flex-col gap-2">
           {navItems.map((item) => {
