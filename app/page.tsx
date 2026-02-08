@@ -10,11 +10,20 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FileText, Hash, Layers, Inbox, ArrowRight, Brain, Search, MessageSquare, Lock } from 'lucide-react'
 
-// Helper to count all files in inbox folder structure
-function countInboxFiles(folder: { files: unknown[]; folders: { files: unknown[]; folders: unknown[] }[] }): number {
+// Helper to count all files in a folder structure (recursive)
+function countFolderFiles(folder: { files: unknown[]; folders: { files: unknown[]; folders: unknown[] }[] }): number {
   let count = folder.files.length
   for (const subfolder of folder.folders) {
-    count += countInboxFiles(subfolder as { files: unknown[]; folders: { files: unknown[]; folders: unknown[] }[] })
+    count += countFolderFiles(subfolder as { files: unknown[]; folders: { files: unknown[]; folders: unknown[] }[] })
+  }
+  return count
+}
+
+// Helper to count all files in inbox contents response
+function countInboxFiles(data: { root_files: unknown[]; folders: { files: unknown[]; folders: unknown[] }[] }): number {
+  let count = data.root_files.length
+  for (const folder of data.folders) {
+    count += countFolderFiles(folder as { files: unknown[]; folders: { files: unknown[]; folders: unknown[] }[] })
   }
   return count
 }
