@@ -121,7 +121,7 @@ export function InboxFileBrowser() {
     setProcessResult(null)
     try {
       const result = await processInbox()
-      setProcessResult(`Processed ${result.processed_count} file(s)`)
+      setProcessResult(`Processed ${result.processed} file(s), moved ${result.moved}, skipped ${result.skipped}`)
       // Refresh the contents after processing
       await fetchContents()
     } catch (err) {

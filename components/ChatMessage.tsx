@@ -40,11 +40,11 @@ export function ChatMessage({ role, content, sources, isLoading }: ChatMessagePr
                   {sources.map((source, index) => (
                     <Link
                       key={index}
-                      href={`/notes/${source.path}`}
+                      href={`/notes/${source.file_path}`}
                       className="inline-flex items-center gap-1 text-xs bg-muted hover:bg-muted/80 px-2 py-1 rounded transition-colors"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      {source.title || source.path.split('/').pop()?.replace('.md', '')}
+                      {source.file_title || source.file_path.split('/').pop()?.replace('.md', '')}
                     </Link>
                   ))}
                 </div>

@@ -11,7 +11,7 @@ interface PageProps {
   params: Promise<{ id: string }>
 }
 
-async function getConversation(id: string) {
+async function getConversation(id: number) {
   try {
     const conversation = await prisma.conversation.findUnique({
       where: { id },
@@ -27,7 +27,13 @@ async function getConversation(id: string) {
 
 export default async function ConversationPage({ params }: PageProps) {
   const { id } = await params
-  const conversation = await getConversation(id)
+  const conversationId = parseInt(id, 10)
+  
+  if (isNaN(conversationId)) {
+    redirect('/ask')
+  }
+  
+  const conversation = await getConversation(conversationId)
 
   if (!conversation) {
     redirect('/ask')
@@ -74,7 +80,8 @@ export default async function ConversationPage({ params }: PageProps) {
 
 export async function generateMetadata({ params }: PageProps) {
   const { id } = await params
-  const conversation = await getConversation(id)
+  const conversationId = parseInt(id, 10)
+  const conversation = isNaN(conversationId) ? null : await getConversation(conversationId)
 
   return {
     title: `${conversation?.title || 'Conversation'} | Second Brain`,

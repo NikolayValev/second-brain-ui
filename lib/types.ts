@@ -1,3 +1,21 @@
+// Re-export API types from api-client (which wraps the generated OpenAPI types)
+export type {
+  SourceInfo,
+  InboxFileInfo,
+  InboxFolderInfo,
+  InboxContentsResponse,
+  InboxProcessResponse,
+  SemanticSearchResult,
+  SemanticSearchResponse,
+} from './api-client';
+
+// Alias SourceInfo as Source for backward compatibility
+export type { SourceInfo as Source } from './api-client';
+
+// Rename Python API SearchResult to avoid conflict with local DB SearchResult
+export type { SemanticSearchResult as PythonSearchResult } from './api-client';
+
+// Database/Prisma types (not from Python API)
 export interface FileWithRelations {
   id: number
   path: string
@@ -43,15 +61,8 @@ export interface Message {
   conversationId: string
   role: 'user' | 'assistant'
   content: string
-  sources: Source[] | null
+  sources: import('./api-client').SourceInfo[] | null
   createdAt: Date
-}
-
-export interface Source {
-  path: string
-  title: string
-  snippet?: string
-  score?: number
 }
 
 export interface DashboardStats {
@@ -61,6 +72,7 @@ export interface DashboardStats {
   inboxCount: number
 }
 
+// Local DB SearchResult (from Next.js /api/search route, not Python API)
 export interface SearchResult {
   id: number
   path: string
@@ -68,34 +80,4 @@ export interface SearchResult {
   snippet: string
   tags: string[]
   modifiedAt: Date
-}
-
-// Inbox File Browser Types
-export interface InboxFileInfo {
-  name: string
-  path: string
-  size_bytes: number
-  modified: string
-  type: "file"
-}
-
-export interface InboxFolderInfo {
-  name: string
-  path: string
-  type: "folder"
-  files: InboxFileInfo[]
-  folders: InboxFolderInfo[]
-}
-
-export interface InboxContentsResponse {
-  inbox_path: string
-  total_files: number
-  total_folders: number
-  root_files: InboxFileInfo[]
-  folders: InboxFolderInfo[]
-}
-
-export interface InboxProcessResponse {
-  message: string
-  processed_count: number
 }
