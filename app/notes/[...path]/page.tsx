@@ -1,52 +1,52 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { prisma } from '@/lib/prisma'
+import { api } from '@/lib/api-client'
 import { MarkdownRenderer } from '@/components/MarkdownRenderer'
 import { TagList } from '@/components/TagPill'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { ChevronLeft, Calendar, FileText, Link as LinkIcon } from 'lucide-react'
-import { formatDate } from '@/lib/format'
+import { ChevronLeft, FileText, Link as LinkIcon } from 'lucide-react'
 
 interface PageProps {
   params: Promise<{ path: string[] }>
 }
 
-async function getFile(path: string) {
+interface FileData {
+  path: string
+  title: string
+  content: string
+  tags?: string[]
+}
+
+interface BacklinkData {
+  path: string
+  title: string
+}
+
+async function getFile(path: string): Promise<FileData | null> {
   try {
-    const file = await prisma.file.findUnique({
-      where: { path },
-      include: {
-        sections: { orderBy: { id: 'asc' } },
-        tags: { include: { tag: true } },
-      },
+    const { data, error } = await api.GET('/file', {
+      params: { query: { path } }
     })
-    return file
+    if (error || !data) {
+      return null
+    }
+    return data as FileData
   } catch {
     return null
   }
 }
 
-async function getBacklinks(path: string) {
+async function getBacklinks(path: string): Promise<BacklinkData[]> {
   try {
-    // Find files that link to this one (search for the filename in content)
-    const filename = path.split('/').pop()?.replace('.md', '') || ''
-    const backlinks = await prisma.file.findMany({
-      where: {
-        sections: {
-          some: {
-            content: {
-              contains: `[[${filename}]]`,
-              mode: 'insensitive',
-            },
-          },
-        },
-        NOT: { path },
-      },
-      take: 10,
+    const { data, error } = await api.GET('/backlinks', {
+      params: { query: { path } }
     })
-    return backlinks
+    if (error || !data) {
+      return []
+    }
+    return (data as { backlinks?: BacklinkData[] }).backlinks || []
   } catch {
     return []
   }
@@ -63,14 +63,8 @@ export default async function NotePage({ params }: PageProps) {
   }
 
   const backlinks = await getBacklinks(filePath)
-  const tags = file.tags.map((ft: { tag: { name: string } }) => ft.tag.name)
-  // Use sections if available, otherwise use file content
-  const content = file.sections.length > 0 
-    ? file.sections.map((s: { level: number; heading: string; content: string }) => {
-        const heading = s.level > 0 ? `${'#'.repeat(s.level)} ${s.heading}\n\n` : ''
-        return heading + s.content
-      }).join('\n\n')
-    : (file as unknown as { content?: string }).content || ''
+  const tags = file.tags || []
+  const content = file.content || ''
 
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto">
@@ -92,10 +86,6 @@ export default async function NotePage({ params }: PageProps) {
           <div className="flex items-center gap-1">
             <FileText className="h-4 w-4" />
             <span>{filePath}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Calendar className="h-4 w-4" />
-            <span>Created {formatDate(file.createdAt)}</span>
           </div>
         </div>
         {tags.length > 0 && (
@@ -122,8 +112,8 @@ export default async function NotePage({ params }: PageProps) {
               Backlinks ({backlinks.length})
             </h2>
             <div className="grid gap-2">
-              {backlinks.map((link: { id: number; path: string; title: string | null }) => (
-                <Link key={link.id} href={`/notes/${link.path}`}>
+              {backlinks.map((link: BacklinkData) => (
+                <Link key={link.path} href={`/notes/${link.path}`}>
                   <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
                     <CardContent className="p-3 flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
@@ -147,7 +137,7 @@ export default async function NotePage({ params }: PageProps) {
 
 export async function generateMetadata({ params }: PageProps) {
   const { path } = await params
-  const filePath = path.join('/')
+  const filePath = path.map(segment => decodeURIComponent(segment)).join('/')
   const file = await getFile(filePath)
 
   if (!file) {
@@ -156,6 +146,6 @@ export async function generateMetadata({ params }: PageProps) {
 
   return {
     title: `${file.title || filePath.split('/').pop()?.replace('.md', '')} | Second Brain`,
-    description: file.sections[0]?.content.slice(0, 160) || '',
+    description: file.content?.slice(0, 160) || '',
   }
 }

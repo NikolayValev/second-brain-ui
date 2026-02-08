@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
 import { SignInButton, SignUpButton } from '@clerk/nextjs'
 import { prisma } from '@/lib/prisma'
+import { api } from '@/lib/api-client'
 import { SearchBar } from '@/components/SearchBar'
 import { NoteCard } from '@/components/NoteCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,14 +10,35 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { FileText, Hash, Layers, Inbox, ArrowRight, Brain, Search, MessageSquare, Lock } from 'lucide-react'
 
+// Helper to count all files in inbox folder structure
+function countInboxFiles(folder: { files: unknown[]; folders: { files: unknown[]; folders: unknown[] }[] }): number {
+  let count = folder.files.length
+  for (const subfolder of folder.folders) {
+    count += countInboxFiles(subfolder as { files: unknown[]; folders: { files: unknown[]; folders: unknown[] }[] })
+  }
+  return count
+}
+
 async function getStats() {
   try {
-    const [totalFiles, totalSections, totalTags, inboxCount] = await prisma.$transaction([
+    const [totalFiles, totalSections, totalTags] = await prisma.$transaction([
       prisma.file.count(),
       prisma.section.count(),
       prisma.tag.count(),
-      prisma.file.count({ where: { path: { startsWith: '00_Inbox/' } } }),
     ])
+    
+    // Get inbox count from Python API (same source as inbox page)
+    let inboxCount = 0
+    try {
+      const { data } = await api.GET('/inbox/contents')
+      if (data) {
+        inboxCount = countInboxFiles(data)
+      }
+    } catch {
+      // Fallback to database count if API fails
+      inboxCount = await prisma.file.count({ where: { path: { startsWith: '00_Inbox/' } } })
+    }
+    
     return { totalFiles, totalSections, totalTags, inboxCount }
   } catch {
     return { totalFiles: 0, totalSections: 0, totalTags: 0, inboxCount: 0 }
