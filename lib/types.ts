@@ -69,3 +69,33 @@ export interface SearchResult {
   tags: string[]
   modifiedAt: Date
 }
+
+// Inbox File Browser Types
+export interface InboxFileInfo {
+  name: string
+  path: string
+  size_bytes: number
+  modified: string
+  type: "file"
+}
+
+export interface InboxFolderInfo {
+  name: string
+  path: string
+  type: "folder"
+  files: InboxFileInfo[]
+  folders: InboxFolderInfo[]
+}
+
+export interface InboxContentsResponse {
+  inbox_path: string
+  total_files: number
+  total_folders: number
+  root_files: InboxFileInfo[]
+  folders: InboxFolderInfo[]
+}
+
+export interface InboxProcessResponse {
+  message: string
+  processed_count: number
+}
