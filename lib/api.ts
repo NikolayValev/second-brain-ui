@@ -115,42 +115,49 @@ export async function getIndexStatus(): Promise<IndexStatusResponse> {
 
 /**
  * Get inbox folder contents (files and folders)
+ * Uses the local Next.js API route which proxies to the Python backend
  */
 export async function getInboxContents(): Promise<InboxContentsResponse> {
-  const { data, error } = await api.GET('/inbox/contents');
-
-  if (error) {
-    throw new Error(`API error: ${JSON.stringify(error)}`);
+  const res = await fetch('/api/inbox?action=contents');
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to fetch inbox contents');
   }
 
-  return data;
+  return res.json();
 }
 
 /**
  * Get flat list of inbox files
+ * Uses the local Next.js API route which proxies to the Python backend
  */
 export async function getInboxFiles(): Promise<InboxFileInfo[]> {
-  const { data, error } = await api.GET('/inbox/files');
-
-  if (error) {
-    throw new Error(`API error: ${JSON.stringify(error)}`);
+  const res = await fetch('/api/inbox?action=files');
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to fetch inbox files');
   }
 
-  // The API returns an array of InboxFileInfo, but the type is not properly defined in the schema
-  return data as InboxFileInfo[];
+  return res.json();
 }
 
 /**
  * Process inbox files (move to vault)
+ * Uses the local Next.js API route which proxies to the Python backend
  */
 export async function processInbox(dryRun: boolean = false): Promise<InboxProcessResponse> {
-  const { data, error } = await api.POST('/inbox/process', {
-    body: { dry_run: dryRun },
+  const res = await fetch('/api/inbox', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dry_run: dryRun }),
   });
-
-  if (error) {
-    throw new Error(`API error: ${JSON.stringify(error)}`);
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to process inbox');
   }
 
-  return data;
+  return res.json();
 }

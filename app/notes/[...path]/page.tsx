@@ -54,7 +54,8 @@ async function getBacklinks(path: string) {
 
 export default async function NotePage({ params }: PageProps) {
   const { path } = await params
-  const filePath = path.join('/')
+  // Decode URL-encoded path segments (e.g., %20 -> space)
+  const filePath = path.map(segment => decodeURIComponent(segment)).join('/')
   const file = await getFile(filePath)
 
   if (!file) {

@@ -1,10 +1,13 @@
 import Link from 'next/link'
+import { auth } from '@clerk/nextjs/server'
+import { SignInButton, SignUpButton } from '@clerk/nextjs'
 import { prisma } from '@/lib/prisma'
 import { SearchBar } from '@/components/SearchBar'
 import { NoteCard } from '@/components/NoteCard'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { FileText, Hash, Layers, Inbox, ArrowRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { FileText, Hash, Layers, Inbox, ArrowRight, Brain, Search, MessageSquare, Lock } from 'lucide-react'
 
 async function getStats() {
   try {
@@ -45,6 +48,13 @@ async function getRecentNotes() {
 }
 
 export default async function DashboardPage() {
+  const { userId } = await auth()
+
+  // Show landing page for signed-out users
+  if (!userId) {
+    return <LandingPage />
+  }
+
   const [stats, recentNotes] = await Promise.all([getStats(), getRecentNotes()])
 
   const statCards = [
@@ -175,6 +185,109 @@ export default async function DashboardPage() {
               </CardContent>
             </Card>
           </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function LandingPage() {
+  return (
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <div className="p-4 md:p-8 max-w-6xl mx-auto">
+        <div className="text-center py-16 md:py-24">
+          <div className="mb-6 flex justify-center">
+            <div className="rounded-full bg-primary/10 p-4">
+              <Brain className="h-16 w-16 text-primary" />
+            </div>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-bold mb-4">
+            Second Brain
+          </h1>
+          <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Your personal knowledge management system powered by AI. Organize, search, and query your notes with intelligence.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <SignInButton mode="modal">
+              <Button size="lg" className="text-lg px-8">
+                Sign In
+              </Button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <Button size="lg" variant="outline" className="text-lg px-8">
+                Create Account
+              </Button>
+            </SignUpButton>
+          </div>
+        </div>
+
+        {/* Features Section */}
+        <div className="py-16 border-t">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-12">
+            Why Second Brain?
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="mb-4 flex justify-center">
+                  <div className="rounded-full bg-blue-500/10 p-3">
+                    <Search className="h-8 w-8 text-blue-500" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Semantic Search</h3>
+                <p className="text-muted-foreground">
+                  Find exactly what you&apos;re looking for with AI-powered semantic search across all your notes.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="mb-4 flex justify-center">
+                  <div className="rounded-full bg-purple-500/10 p-3">
+                    <MessageSquare className="h-8 w-8 text-purple-500" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Ask Questions</h3>
+                <p className="text-muted-foreground">
+                  Query your knowledge base using natural language and get intelligent answers with sources.
+                </p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6 text-center">
+                <div className="mb-4 flex justify-center">
+                  <div className="rounded-full bg-green-500/10 p-3">
+                    <FileText className="h-8 w-8 text-green-500" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Markdown Notes</h3>
+                <p className="text-muted-foreground">
+                  Works with your existing Markdown files. Beautiful rendering with full support for links and tags.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* CTA Section */}
+        <div className="py-16 border-t text-center">
+          <div className="mb-6 flex justify-center">
+            <div className="rounded-full bg-muted p-3">
+              <Lock className="h-8 w-8 text-muted-foreground" />
+            </div>
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">
+            Ready to get started?
+          </h2>
+          <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
+            Sign in to access your personal knowledge base and start exploring your notes with AI.
+          </p>
+          <SignInButton mode="modal">
+            <Button size="lg" className="text-lg px-8">
+              Sign In to Continue
+            </Button>
+          </SignInButton>
         </div>
       </div>
     </div>
