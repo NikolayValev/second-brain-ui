@@ -219,6 +219,7 @@ export default function AskPage() {
 
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
+        
         // Keep last incomplete line in buffer
         buffer = lines.pop() || ''
 
@@ -228,6 +229,7 @@ export default function AskPage() {
             const json = JSON.parse(line.slice(6))
 
             if (json.type === 'source') {
+              // The backend sends the whole source object inside a 'source' property
               sources.push(json.source)
               setMessages((prev) =>
                 prev.map((m) =>
@@ -235,7 +237,7 @@ export default function AskPage() {
                 )
               )
             } else if (json.type === 'token') {
-              fullContent += json.token
+              fullContent += json.content // The token is in the 'content' property
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantId ? { ...m, content: fullContent } : m
