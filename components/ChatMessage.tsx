@@ -3,16 +3,27 @@ import { cn } from '@/lib/utils'
 import { MarkdownRenderer } from './MarkdownRenderer'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { User, Bot, ExternalLink } from 'lucide-react'
-import type { Source } from '@/lib/types'
+
+// Support both new API format (path/title/score) and legacy stored format (file_path/file_title/similarity)
+type SourceData = {
+  path?: string
+  title?: string
+  snippet?: string
+  score?: number
+  file_path?: string
+  file_title?: string
+  similarity?: number
+}
 
 interface ChatMessageProps {
   role: 'user' | 'assistant'
   content: string
-  sources?: Source[] | null
+  sources?: SourceData[] | null
   isLoading?: boolean
+  isStreaming?: boolean
 }
 
-export function ChatMessage({ role, content, sources, isLoading }: ChatMessageProps) {
+export function ChatMessage({ role, content, sources, isLoading, isStreaming }: ChatMessageProps) {
   const isUser = role === 'user'
 
   return (
@@ -32,24 +43,36 @@ export function ChatMessage({ role, content, sources, isLoading }: ChatMessagePr
           </div>
         ) : (
           <>
-            <MarkdownRenderer content={content} className="text-sm" />
+            {/* Show sources first — they arrive before answer tokens during streaming */}
             {sources && sources.length > 0 && (
-              <div className="mt-3 pt-3 border-t">
+              <div className={cn('pt-1', content ? 'mb-3 pb-3 border-b' : 'mb-1')}>
                 <div className="text-xs font-medium text-muted-foreground mb-2">Sources:</div>
                 <div className="flex flex-wrap gap-2">
                   {sources.map((source, index) => (
                     <Link
                       key={index}
-                      href={`/notes/${source.file_path}`}
+                      href={`/notes/${source.path ?? source.file_path}`}
                       className="inline-flex items-center gap-1 text-xs bg-muted hover:bg-muted/80 px-2 py-1 rounded transition-colors"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      {source.file_title || source.file_path.split('/').pop()?.replace('.md', '')}
+                      {source.title ?? source.file_title ?? (source.path ?? source.file_path)?.split('/').pop()?.replace('.md', '')}
                     </Link>
                   ))}
                 </div>
               </div>
             )}
+            {content ? (
+              <div>
+                <MarkdownRenderer content={content} className="text-sm" />
+                {isStreaming && (
+                  <span className="inline-block w-2 h-4 bg-foreground/70 animate-pulse ml-0.5 align-text-bottom" />
+                )}
+              </div>
+            ) : isStreaming ? (
+              <div className="flex gap-1 text-muted-foreground">
+                <span className="animate-pulse">Thinking...</span>
+              </div>
+            ) : null}
           </>
         )}
       </div>

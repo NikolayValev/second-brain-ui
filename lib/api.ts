@@ -29,6 +29,7 @@ export async function askQuestion(request: AskRequest): Promise<AskResponse> {
       model: request.model,
       rag_technique: request.rag_technique,
       include_sources: request.include_sources ?? true,
+      stream: request.stream ?? false,
     },
   });
 

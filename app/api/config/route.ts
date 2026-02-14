@@ -130,8 +130,8 @@ export async function GET() {
     hasPythonBackend: false, // Backend not available, using fallback
     defaults: {
       provider: hasOllama || true ? 'ollama' : hasOpenAI ? 'openai' : 'ollama',
-      model: 'llama3.2',
-      ragTechnique: 'basic',
+      model: 'qwen3:30b',
+      ragTechnique: 'hybrid',
     },
     // Fields required by BACKEND_API_SPEC.md
     embedding_model: 'not-configured',

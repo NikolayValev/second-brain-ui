@@ -63,6 +63,7 @@ export default function AskPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isStreaming, setIsStreaming] = useState(false)
   const [showSidebar, setShowSidebar] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -144,6 +145,17 @@ export default function AskPage() {
     }
   }
 
+  // Refresh conversation list from the database
+  const refreshConversations = async () => {
+    try {
+      const response = await fetch('/api/conversations')
+      const data = await response.json()
+      setConversations(data.conversations || [])
+    } catch (error) {
+      console.error('Failed to refresh conversations:', error)
+    }
+  }
+
   const handleSubmit = async () => {
     if (!input.trim() || isLoading) return
 
@@ -159,6 +171,21 @@ export default function AskPage() {
     setMessages((prev) => [...prev, userMessage])
     setInput('')
     setIsLoading(true)
+    setIsStreaming(true)
+
+    // Add placeholder assistant message to stream into
+    const assistantId = crypto.randomUUID()
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: assistantId,
+        conversationId: '',
+        role: 'assistant' as const,
+        content: '',
+        sources: null,
+        createdAt: new Date(),
+      },
+    ])
 
     try {
       const response = await fetch('/api/ask', {
@@ -170,46 +197,100 @@ export default function AskPage() {
           provider: selectedProvider,
           model: selectedModel,
           ragTechnique: selectedRAG,
+          stream: true,
         }),
       })
 
-      const data = await response.json()
-
-      const assistantMessage: Message = {
-        id: crypto.randomUUID(),
-        conversationId: data.conversationId,
-        role: 'assistant',
-        content: data.answer,
-        sources: data.sources as Source[] || null,
-        createdAt: new Date(),
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({ error: 'Request failed' }))
+        throw new Error(errData.error || `HTTP ${response.status}`)
       }
 
-      setMessages((prev) => [...prev, assistantMessage])
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      const sources: Source[] = []
+      let fullContent = ''
+      let newConversationId: string | null = null
+      let buffer = ''
 
-      // Update current conversation if new
-      if (!currentConversation && data.conversationId) {
-        const newConv = {
-          id: data.conversationId,
-          title: userMessage.content.slice(0, 50),
-          updatedAt: new Date().toISOString(),
-          messages: [userMessage, assistantMessage],
+      while (reader) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        // Keep last incomplete line in buffer
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const json = JSON.parse(line.slice(6))
+
+            if (json.type === 'source') {
+              sources.push(json.source)
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId ? { ...m, sources: [...sources] } : m
+                )
+              )
+            } else if (json.type === 'token') {
+              fullContent += json.token
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId ? { ...m, content: fullContent } : m
+                )
+              )
+            } else if (json.type === 'done') {
+              newConversationId = json.conversation_id != null
+                ? String(json.conversation_id)
+                : null
+            }
+          } catch {
+            // Skip malformed SSE lines
+          }
         }
-        setCurrentConversation(newConv)
-        setConversations((prev) => [newConv, ...prev])
       }
+
+      setIsStreaming(false)
+
+      // Update conversation state
+      if (newConversationId) {
+        if (!currentConversation) {
+          const newConv: Conversation = {
+            id: newConversationId,
+            title: userMessage.content.slice(0, 50),
+            updatedAt: new Date().toISOString(),
+            messages: [],
+          }
+          setCurrentConversation(newConv)
+          setConversations((prev) => [newConv, ...prev])
+        } else {
+          // Update existing conversation id reference
+          setCurrentConversation((prev) =>
+            prev ? { ...prev, id: newConversationId! } : prev
+          )
+        }
+      }
+
+      // Sync conversations to PG and refresh sidebar
+      fetch('/api/sync/conversations', { method: 'POST' })
+        .then(() => refreshConversations())
+        .catch(() => {})
     } catch (error) {
       console.error('Ask error:', error)
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: crypto.randomUUID(),
-          conversationId: '',
-          role: 'assistant',
-          content: 'Sorry, I encountered an error processing your question. Please try again.',
-          sources: null,
-          createdAt: new Date(),
-        },
-      ])
+      setIsStreaming(false)
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? {
+                ...m,
+                content:
+                  'Sorry, I encountered an error processing your question. Please try again.',
+              }
+            : m
+        )
+      )
     } finally {
       setIsLoading(false)
     }
@@ -310,15 +391,20 @@ export default function AskPage() {
             </div>
           ) : (
             <div className="divide-y">
-              {messages.map((message) => (
+              {messages.map((message, index) => (
                 <ChatMessage
                   key={message.id}
                   role={message.role}
                   content={message.content}
                   sources={message.sources}
+                  isStreaming={
+                    isStreaming &&
+                    message.role === 'assistant' &&
+                    index === messages.length - 1
+                  }
                 />
               ))}
-              {isLoading && (
+              {isLoading && !isStreaming && (
                 <ChatMessage role="assistant" content="" isLoading />
               )}
               <div ref={messagesEndRef} />

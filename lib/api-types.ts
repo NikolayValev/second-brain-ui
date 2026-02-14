@@ -105,8 +105,11 @@ export interface paths {
         };
         /**
          * Get File
-         * @description Get full content of a specific file.
+         * @description Get full content of a specific file with metadata.
+         *
          *     Path should be relative to the vault root.
+         *     Returns the file content along with tags, timestamps, and frontmatter.
+         *     If file is not in database, reads directly from filesystem and triggers indexing.
          */
         get: operations["get_file_file_get"];
         put?: never;
@@ -126,8 +129,10 @@ export interface paths {
         };
         /**
          * List Tags
-         * @description List all tags in the vault.
-         *     Useful for exploring the knowledge graph.
+         * @description List all tags in the vault with usage counts.
+         *
+         *     Returns tags sorted by usage count (descending), then alphabetically.
+         *     Useful for exploring the knowledge graph and tag-based navigation.
          */
         get: operations["list_tags_tags_get"];
         put?: never;
@@ -148,72 +153,11 @@ export interface paths {
         /**
          * Get Backlinks
          * @description Find all files that link to a specific file.
-         *     Useful for exploring connections in the knowledge graph.
+         *
+         *     Searches for wikilinks ([[filename]]) and markdown links that reference
+         *     the target file. Useful for exploring connections in the knowledge graph.
          */
         get: operations["get_backlinks_backlinks_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/reindex": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Trigger Reindex
-         * @description Manually trigger a reindex of the vault.
-         *     Use full=true to force a complete rescan.
-         */
-        post: operations["trigger_reindex_reindex_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/index": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Trigger Index
-         * @description Trigger document indexing for the knowledge base.
-         *
-         *     Runs indexing in the background and returns a job ID for tracking.
-         */
-        post: operations["trigger_index_index_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/index/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Index Status
-         * @description Get the current indexing status.
-         */
-        get: operations["get_index_status_index_status_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -239,6 +183,8 @@ export interface paths {
          *     to generate an answer based on the retrieved context.
          *
          *     Supports multiple providers, models, and RAG techniques.
+         *
+         *     Set ``stream: true`` to receive the answer as Server-Sent Events.
          */
         post: operations["ask_question_ask_post"];
         delete?: never;
@@ -262,6 +208,29 @@ export interface paths {
         get: operations["get_embedding_stats_embeddings_stats_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/embeddings/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Generate Embeddings
+         * @description Generate embeddings for pending chunks.
+         *
+         *     Processes chunks that don't have embeddings yet.
+         *     Run this after indexing to enable RAG functionality.
+         */
+        post: operations["generate_embeddings_embeddings_generate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -405,6 +374,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reindex": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger Reindex
+         * @description Manually trigger a reindex of the vault.
+         *     Use full=true to force a complete rescan.
+         */
+        post: operations["trigger_reindex_reindex_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Trigger Index
+         * @description Trigger document indexing for the knowledge base.
+         *
+         *     Runs indexing in the background and returns a job ID for tracking.
+         */
+        post: operations["trigger_index_index_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/index/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Index Status
+         * @description Get the current indexing status.
+         */
+        get: operations["get_index_status_index_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/conversations": {
         parameters: {
             query?: never;
@@ -473,36 +505,13 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/embeddings/generate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Generate Embeddings
-         * @description Generate embeddings for pending chunks.
-         *
-         *     Processes chunks that don't have embeddings yet.
-         *     Run this after indexing to enable RAG functionality.
-         */
-        post: operations["generate_embeddings_embeddings_generate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
          * AskRequest
-         * @description Request body for /ask endpoint (new API spec).
+         * @description Request body for /ask endpoint.
          */
         AskRequest: {
             /** Question */
@@ -511,14 +520,14 @@ export interface components {
             conversation_id?: string | null;
             /**
              * Provider
-             * @default gemini
+             * @default ollama
              */
             provider: string;
             /** Model */
             model?: string | null;
             /**
              * Rag Technique
-             * @default basic
+             * @default hybrid
              */
             rag_technique: string;
             /**
@@ -526,18 +535,48 @@ export interface components {
              * @default true
              */
             include_sources: boolean;
+            /**
+             * Stream
+             * @default false
+             */
+            stream: boolean;
         };
         /**
          * AskResponse
-         * @description Response from RAG-powered Q&A.
+         * @description Response from /ask endpoint.
          */
         AskResponse: {
             /** Answer */
             answer: string;
             /** Sources */
-            sources: components["schemas"]["SourceInfo"][];
-            /** Query */
-            query: string;
+            sources: components["schemas"]["Source"][];
+            /** Conversation Id */
+            conversation_id?: string | null;
+            /** Model Used */
+            model_used: string;
+            tokens_used?: components["schemas"]["TokenUsage"] | null;
+        };
+        /**
+         * BacklinkItem
+         * @description A single backlink item.
+         */
+        BacklinkItem: {
+            /** Path */
+            path: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * BacklinksResponse
+         * @description Response for backlinks endpoint.
+         */
+        BacklinksResponse: {
+            /** Target */
+            target: string;
+            /** Backlinks */
+            backlinks: components["schemas"]["BacklinkItem"][];
+            /** Count */
+            count: number;
         };
         /**
          * ConfigDefaults
@@ -595,7 +634,7 @@ export interface components {
         };
         /**
          * FileResponse
-         * @description File content response.
+         * @description File content response with metadata.
          */
         FileResponse: {
             /** Path */
@@ -604,6 +643,22 @@ export interface components {
             title: string;
             /** Content */
             content: string;
+            /**
+             * Tags
+             * @default []
+             */
+            tags: string[];
+            /** Created At */
+            created_at?: string | null;
+            /** Modified At */
+            modified_at?: string | null;
+            /**
+             * Frontmatter
+             * @default {}
+             */
+            frontmatter: {
+                [key: string]: unknown;
+            };
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -929,7 +984,7 @@ export interface components {
             limit: number;
             /**
              * Rag Technique
-             * @default basic
+             * @default hybrid
              */
             rag_technique: string;
         };
@@ -967,18 +1022,18 @@ export interface components {
             };
         };
         /**
-         * SourceInfo
-         * @description Source information for RAG response.
+         * Source
+         * @description Source information for responses.
          */
-        SourceInfo: {
-            /** File Path */
-            file_path: string;
-            /** File Title */
-            file_title: string;
-            /** Section */
-            section?: string | null;
-            /** Similarity */
-            similarity: number;
+        Source: {
+            /** Path */
+            path: string;
+            /** Title */
+            title: string;
+            /** Snippet */
+            snippet: string;
+            /** Score */
+            score: number;
         };
         /**
          * StatsResponse
@@ -1034,6 +1089,47 @@ export interface components {
             }[];
             /** Status */
             status: string;
+        };
+        /**
+         * TagItem
+         * @description A single tag with usage count.
+         */
+        TagItem: {
+            /** Name */
+            name: string;
+            /** File Count */
+            file_count: number;
+        };
+        /**
+         * TagsResponse
+         * @description Response for tags endpoint.
+         */
+        TagsResponse: {
+            /** Tags */
+            tags: components["schemas"]["TagItem"][];
+            /** Count */
+            count: number;
+        };
+        /**
+         * TokenUsage
+         * @description Token usage information.
+         */
+        TokenUsage: {
+            /**
+             * Prompt
+             * @default 0
+             */
+            prompt: number;
+            /**
+             * Completion
+             * @default 0
+             */
+            completion: number;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -1237,7 +1333,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["TagsResponse"];
                 };
             };
         };
@@ -1260,7 +1356,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown;
+                    "application/json": components["schemas"]["BacklinksResponse"];
                 };
             };
             /** @description Validation Error */
@@ -1270,91 +1366,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    trigger_reindex_reindex_post: {
-        parameters: {
-            query?: {
-                /** @description Perform full rescan */
-                full?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    trigger_index_index_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["IndexRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["IndexResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_index_status_index_status_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["IndexStatusResponse"];
                 };
             };
         };
@@ -1408,6 +1419,38 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmbeddingStatsResponse"];
+                };
+            };
+        };
+    };
+    generate_embeddings_embeddings_generate_post: {
+        parameters: {
+            query?: {
+                /** @description Maximum chunks to process */
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1570,6 +1613,91 @@ export interface operations {
             };
         };
     };
+    trigger_reindex_reindex_post: {
+        parameters: {
+            query?: {
+                /** @description Perform full rescan */
+                full?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    trigger_index_index_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IndexRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_index_status_index_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexStatusResponse"];
+                };
+            };
+        };
+    };
     list_conversations_conversations_get: {
         parameters: {
             query?: {
@@ -1680,38 +1808,6 @@ export interface operations {
                 "application/json": components["schemas"]["MessageCreate"];
             };
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    generate_embeddings_embeddings_generate_post: {
-        parameters: {
-            query?: {
-                /** @description Maximum chunks to process */
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

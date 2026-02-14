@@ -1,19 +1,23 @@
 # Second Brain UI
 
-A mobile-first web interface for querying and managing the Second Brain knowledge base. Built with Next.js 14, Prisma, and shadcn/ui.
+A mobile-first web interface for querying and managing the Second Brain knowledge base. Built with Next.js 16, Clerk auth, Prisma, and shadcn/ui.
 
 ## Features
 
 - 📊 **Dashboard** - Overview with stats, recent notes, and quick actions
 - 🔍 **Search** - Full-text search with tag filtering
-- 💬 **Ask/Chat** - RAG-powered Q&A with conversation history
+- 💬 **Ask/Chat** - RAG-powered Q&A with **SSE streaming** and conversation history
 - 📄 **Note Viewer** - Markdown rendering with backlinks
 - 📥 **Inbox** - Pending items management
+- 🔄 **Data Sync** - Automatic conversation sync between backend SQLite and PostgreSQL
+- 🔐 **Authentication** - Clerk-based auth with route protection
 
 ## Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 16 (App Router)
+- **Auth**: Clerk
 - **Database**: PostgreSQL via Prisma ORM
+- **API Client**: openapi-fetch (type-safe, generated from OpenAPI spec)
 - **Styling**: Tailwind CSS + shadcn/ui
 - **Icons**: Lucide React
 - **Markdown**: react-markdown + remark-gfm
@@ -100,17 +104,45 @@ second-brain-ui/
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/search` | GET | Full-text search with tag filtering |
-| `/api/ask` | POST | RAG Q&A (proxies to Python backend) |
+| `/api/ask` | POST | RAG Q&A — supports JSON response or SSE streaming (`stream: true`) |
 | `/api/files` | GET | List files or get file by path |
 | `/api/stats` | GET | Dashboard statistics |
-| `/api/conversations` | GET/POST/DELETE | Conversation CRUD |
+| `/api/config` | GET | Backend configuration (providers, models, RAG techniques) |
+| `/api/conversations` | GET/POST/DELETE | Conversation CRUD via Prisma |
+| `/api/inbox` | GET/POST | Inbox file listing and processing |
+| `/api/sync` | POST/GET | Trigger sync or get sync stats/changes |
+| `/api/sync/conversations` | POST | Sync conversations from backend SQLite → PostgreSQL |
+
+### Streaming Chat Flow
+
+```
+Client                   Next.js API Route             Python Backend
+  │                            │                            │
+  │── POST /api/ask ──────────>│                            │
+  │   { stream: true }        │── POST /ask ───────────────>│
+  │                            │   + X-API-Key header       │
+  │                            │<── SSE stream ─────────────│
+  │<── SSE stream ─────────────│                            │
+  │  data: {type:"source",...} │                            │
+  │  data: {type:"token",...}  │                            │
+  │  data: {type:"done",...}   │                            │
+  │                            │                            │
+  │── POST /api/sync/conv ────>│── POST /sync/conversations>│
+  │   (fire-and-forget)        │   (sync to PostgreSQL)     │
+  │                            │                            │
+  │── GET /api/conversations ─>│                            │
+  │   (refresh sidebar)        │   (Prisma query)           │
+```
 
 ## Environment Variables
 
 | Variable | Description |
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string |
-| `PYTHON_API_URL` | Python backend URL for RAG (default: http://localhost:8000) |
+| `PYTHON_API_URL` | Python backend URL for RAG (default: `http://localhost:8000`) |
+| `BRAIN_API_KEY` | API key for authenticating with the Python backend |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
+| `CLERK_SECRET_KEY` | Clerk secret key |
 
 ## Deployment
 
@@ -130,13 +162,13 @@ docker run -p 3000:3000 --env-file .env.local second-brain-ui
 
 ## Future Enhancements
 
-- [ ] Clerk authentication
 - [ ] PWA with offline support
-- [ ] Trigger inbox processing from UI
 - [ ] Create new notes from web
 - [ ] Graph visualization
-- [ ] Dark mode toggle
 - [ ] Keyboard shortcuts
+- [ ] Periodic background sync polling (every 60s)
+- [ ] Dashboard stats for embeddings and conversations
+- [ ] pgvector-powered "similar notes" sidebar
 
 ## License
 

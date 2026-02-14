@@ -61,7 +61,7 @@ export interface Message {
   conversationId: string
   role: 'user' | 'assistant'
   content: string
-  sources: import('./api-client').SourceInfo[] | null
+  sources: import('./api-client').SourceInfo[] | Record<string, unknown>[] | null
   createdAt: Date
 }
 

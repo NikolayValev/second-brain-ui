@@ -25,7 +25,7 @@ export const api = createClient<paths>({
 // Re-export types for convenience
 export type AskRequest = components['schemas']['AskRequest'];
 export type AskResponse = components['schemas']['AskResponse'];
-export type SourceInfo = components['schemas']['SourceInfo'];
+export type SourceInfo = components['schemas']['Source'];
 export type SearchResponse = components['schemas']['SearchResponse'];
 export type SearchResult = components['schemas']['SearchResult'];
 export type SemanticSearchRequest = components['schemas']['SemanticSearchRequest'];
