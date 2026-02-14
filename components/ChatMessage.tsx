@@ -48,7 +48,7 @@ export function ChatMessage({ role, content, sources, isLoading, isStreaming }: 
               <div className={cn('pt-1', content ? 'mb-3 pb-3 border-b' : 'mb-1')}>
                 <div className="text-xs font-medium text-muted-foreground mb-2">Sources:</div>
                 <div className="flex flex-wrap gap-2">
-                  {sources.map((source, index) => (
+                  {sources.filter(Boolean).filter(Boolean).map((source, index) => (
                     <Link
                       key={index}
                       href={`/notes/${source.path ?? source.file_path}`}
