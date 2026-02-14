@@ -21,7 +21,7 @@ export function NoteCard({ path, title, snippet, tags, modifiedAt }: NoteCardPro
       <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
               <CardTitle className="text-base font-medium truncate">{displayTitle}</CardTitle>
             </div>

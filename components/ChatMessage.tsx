@@ -51,7 +51,7 @@ export function ChatMessage({ role, content, sources, isLoading, isStreaming }: 
                   {sources.filter(Boolean).filter(Boolean).map((source, index) => (
                     <Link
                       key={index}
-                      href={`/notes/${source.path ?? source.file_path}`}
+                      href={`/notes/${(source.path ?? source.file_path)?.replace(/\\/g, '/')}`}
                       className="inline-flex items-center gap-1 text-xs bg-muted hover:bg-muted/80 px-2 py-1 rounded transition-colors"
                     >
                       <ExternalLink className="h-3 w-3" />
