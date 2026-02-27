@@ -1,23 +1,19 @@
-import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { buildBackendHeaders, buildBackendUrl, forwardBackendJson } from '@/lib/backend-proxy'
 
 export async function GET() {
   try {
-    const [totalFiles, totalSections, totalTags, inboxCount] = await prisma.$transaction([
-      prisma.file.count(),
-      prisma.section.count(),
-      prisma.tag.count(),
-      prisma.file.count({ where: { path: { startsWith: '00_Inbox/' } } }),
-    ])
-
-    return NextResponse.json({
-      totalFiles,
-      totalSections,
-      totalTags,
-      inboxCount,
+    const response = await fetch(buildBackendUrl('/stats'), {
+      method: 'GET',
+      headers: buildBackendHeaders(),
+      cache: 'no-store',
     })
-  } catch (error) {
-    console.error('Stats API error:', error)
-    return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 })
+
+    return forwardBackendJson(response)
+  } catch {
+    return NextResponse.json(
+      { detail: 'Backend unavailable. Could not fetch /stats.' },
+      { status: 503 }
+    )
   }
 }

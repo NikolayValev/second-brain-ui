@@ -160,6 +160,54 @@ docker build -t second-brain-ui .
 docker run -p 3000:3000 --env-file .env.local second-brain-ui
 ```
 
+## Testing
+
+Run the full test matrix:
+
+```bash
+npm run test:all
+```
+
+Run each layer separately:
+
+```bash
+npm run test:unit   # component + library unit tests
+npm run test:impl   # API route implementation tests
+npm run test:live   # live backend contract checks (defaults to https://brain.nikolayvalev.com)
+npm run test:e2e    # Playwright end-to-end tests
+npm run test:e2e:deployed # Playwright smoke checks against PLAYWRIGHT_BASE_URL
+npm run test:e2e:tunnel # Playwright E2E via public tunnel (for sandboxed/private-network blocked browsers)
+```
+
+E2E tests use:
+- `playwright.config.ts`
+- `e2e/mock-backend-server.cjs` (deterministic mock backend)
+
+Install Chromium for Playwright once:
+
+```bash
+npx playwright install chromium
+```
+
+Optional envs for live checks:
+
+```bash
+# defaults to https://brain.nikolayvalev.com
+LIVE_BACKEND_URL=https://brain.nikolayvalev.com
+# include to run authenticated live checks too
+BRAIN_API_KEY=your_api_key_here
+```
+
+Run deployed UI smoke E2E:
+
+```bash
+npm run test:e2e:deployed
+# or override target
+PLAYWRIGHT_BASE_URL=https://your-deployed-ui.example.com npm run test:e2e:deployed
+```
+
+`test:e2e:deployed` expects a frontend URL, not the backend API host.
+
 ## Future Enhancements
 
 - [ ] PWA with offline support

@@ -1,91 +1,105 @@
-import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
+import { buildBackendHeaders, buildBackendUrl, forwardBackendJson } from '@/lib/backend-proxy'
+
+function parseLimit(raw: string | null): number {
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed)) {
+    return 20
+  }
+
+  return Math.min(100, Math.max(1, Math.floor(parsed)))
+}
+
+function parseConversationId(raw: string | null): number | null {
+  if (!raw) {
+    return null
+  }
+
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null
+  }
+
+  return Math.floor(parsed)
+}
 
 export async function GET(req: NextRequest) {
+  const idParam = req.nextUrl.searchParams.get('id')
+  const conversationId = parseConversationId(idParam)
+
+  if (idParam && conversationId === null) {
+    return NextResponse.json({ detail: 'Invalid conversation ID' }, { status: 400 })
+  }
+
   try {
-    const idParam = req.nextUrl.searchParams.get('id')
-    const sessionId = req.nextUrl.searchParams.get('sessionId') || 'default'
-    const limit = parseInt(req.nextUrl.searchParams.get('limit') || '20')
-
-    if (idParam) {
-      const id = parseInt(idParam, 10)
-      if (isNaN(id)) {
-        return NextResponse.json({ error: 'Invalid conversation ID' }, { status: 400 })
-      }
-      // Get single conversation with messages
-      const conversation = await prisma.conversation.findUnique({
-        where: { id },
-        include: {
-          messages: { orderBy: { createdAt: 'asc' } },
-        },
-      })
-
-      if (!conversation) {
-        return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
-      }
-
-      return NextResponse.json({ conversation })
+    if (conversationId !== null) {
+      const response = await fetch(
+        buildBackendUrl(`/conversations/${conversationId}`),
+        {
+          method: 'GET',
+          headers: buildBackendHeaders(),
+          cache: 'no-store',
+        }
+      )
+      return forwardBackendJson(response)
     }
 
-    // List conversations
-    const conversations = await prisma.conversation.findMany({
-      where: { sessionId },
-      include: {
-        messages: {
-          take: 1,
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-      take: limit,
-      orderBy: { updatedAt: 'desc' },
-    })
+    const sessionId =
+      req.nextUrl.searchParams.get('session_id') ||
+      req.nextUrl.searchParams.get('sessionId') ||
+      undefined
+    const limit = parseLimit(req.nextUrl.searchParams.get('limit'))
 
-    return NextResponse.json({ conversations })
-  } catch (error) {
-    console.error('Conversations API error:', error)
-    return NextResponse.json({ error: 'Failed to fetch conversations' }, { status: 500 })
+    const response = await fetch(
+      buildBackendUrl('/conversations', { session_id: sessionId, limit }),
+      {
+        method: 'GET',
+        headers: buildBackendHeaders(),
+        cache: 'no-store',
+      }
+    )
+    return forwardBackendJson(response)
+  } catch {
+    return NextResponse.json(
+      { detail: 'Backend unavailable. Could not fetch conversations.' },
+      { status: 503 }
+    )
   }
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json()
-    const { sessionId = 'default', title } = body
+  const body = await req.json().catch(() => null) as {
+    session_id?: string | null
+    sessionId?: string | null
+    title?: string | null
+    system_prompt?: string | null
+    systemPrompt?: string | null
+  } | null
 
-    const conversation = await prisma.conversation.create({
-      data: {
-        sessionId,
-        title,
-      },
+  try {
+    const response = await fetch(buildBackendUrl('/conversations'), {
+      method: 'POST',
+      headers: buildBackendHeaders(),
+      body: JSON.stringify({
+        session_id: body?.session_id ?? body?.sessionId ?? undefined,
+        title: body?.title ?? undefined,
+        system_prompt: body?.system_prompt ?? body?.systemPrompt ?? undefined,
+      }),
+      cache: 'no-store',
     })
 
-    return NextResponse.json({ conversation })
-  } catch (error) {
-    console.error('Create conversation error:', error)
-    return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
+    return forwardBackendJson(response)
+  } catch {
+    return NextResponse.json(
+      { detail: 'Backend unavailable. Could not create conversation.' },
+      { status: 503 }
+    )
   }
 }
 
-export async function DELETE(req: NextRequest) {
-  try {
-    const idParam = req.nextUrl.searchParams.get('id')
-
-    if (!idParam) {
-      return NextResponse.json({ error: 'Conversation ID required' }, { status: 400 })
-    }
-
-    const id = parseInt(idParam, 10)
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'Invalid conversation ID' }, { status: 400 })
-    }
-
-    await prisma.conversation.delete({
-      where: { id },
-    })
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Delete conversation error:', error)
-    return NextResponse.json({ error: 'Failed to delete conversation' }, { status: 500 })
-  }
+export async function DELETE() {
+  return NextResponse.json(
+    { detail: 'Conversation deletion is not supported by the current backend API.' },
+    { status: 405 }
+  )
 }

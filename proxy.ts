@@ -13,9 +13,25 @@ const isProtectedRoute = createRouteMatcher([
   '/api/inbox(.*)',
   '/api/search(.*)',
   '/api/stats(.*)',
+  '/api/config(.*)',
+  '/api/sync(.*)',
+  '/api/index(.*)',
+  '/api/reindex(.*)',
+  '/api/graph(.*)',
+  '/api/embeddings(.*)',
+  '/api/tags(.*)',
+  '/api/backlinks(.*)',
+  '/api/security(.*)',
 ]);
 
 export const proxy = clerkMiddleware(async (auth, req) => {
+  if (
+    process.env.DISABLE_AUTH_FOR_E2E === 'true' ||
+    process.env.NEXT_PUBLIC_DISABLE_AUTH_FOR_E2E === 'true'
+  ) {
+    return
+  }
+
   if (isProtectedRoute(req)) {
     await auth.protect();
   }

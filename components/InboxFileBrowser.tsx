@@ -189,7 +189,7 @@ export function InboxFileBrowser() {
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              {data.root_files.length > 0 && (
+              {data.total_files > 0 && (
                 <Button
                   onClick={handleProcess}
                   size="sm"

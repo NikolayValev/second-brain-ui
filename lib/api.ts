@@ -5,13 +5,12 @@ import type {
   InboxContentsResponse,
   InboxFileInfo,
   InboxProcessResponse,
-  SearchResponse,
+  SemanticSearchResponse,
   ConfigResponse,
   HealthResponse,
   IndexRequest,
   IndexResponse,
   IndexStatusResponse,
-  SourceInfo,
 } from './api-client';
 
 // Re-export types for backwards compatibility
@@ -28,6 +27,11 @@ export async function askQuestion(request: AskRequest): Promise<AskResponse> {
       provider: request.provider,
       model: request.model,
       rag_technique: request.rag_technique,
+      system_prompt: request.system_prompt,
+      temperature: request.temperature,
+      max_tokens: request.max_tokens,
+      top_p: request.top_p,
+      top_k: request.top_k,
       include_sources: request.include_sources ?? true,
       stream: request.stream ?? false,
     },
@@ -43,11 +47,13 @@ export async function askQuestion(request: AskRequest): Promise<AskResponse> {
 /**
  * Semantic search without LLM response generation
  */
-export async function searchSemantic(query: string, limit: number = 10): Promise<SearchResponse> {
-  const { data, error } = await api.GET('/search', {
-    params: {
-      query: { q: query, limit },
-    },
+export async function searchSemantic(
+  query: string,
+  limit: number = 10,
+  ragTechnique: string = 'hybrid'
+): Promise<SemanticSearchResponse> {
+  const { data, error } = await api.POST('/search', {
+    body: { query, limit, rag_technique: ragTechnique },
   });
 
   if (error) {
@@ -123,7 +129,7 @@ export async function getInboxContents(): Promise<InboxContentsResponse> {
   
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to fetch inbox contents');
+    throw new Error(error.detail || error.error || 'Failed to fetch inbox contents');
   }
 
   return res.json();
@@ -138,7 +144,7 @@ export async function getInboxFiles(): Promise<InboxFileInfo[]> {
   
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to fetch inbox files');
+    throw new Error(error.detail || error.error || 'Failed to fetch inbox files');
   }
 
   return res.json();
@@ -157,7 +163,7 @@ export async function processInbox(dryRun: boolean = false): Promise<InboxProces
   
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || 'Failed to process inbox');
+    throw new Error(error.detail || error.error || 'Failed to process inbox');
   }
 
   return res.json();

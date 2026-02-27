@@ -1,47 +1,43 @@
-import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
+import { buildBackendHeaders, buildBackendUrl, forwardBackendJson } from '@/lib/backend-proxy'
 
 export async function GET(req: NextRequest) {
-  try {
-    const path = req.nextUrl.searchParams.get('path')
-    const limit = parseInt(req.nextUrl.searchParams.get('limit') || '20')
-    const inbox = req.nextUrl.searchParams.get('inbox') === 'true'
+  const action = req.nextUrl.searchParams.get('action')
+  const path = req.nextUrl.searchParams.get('path')
 
-    if (path) {
-      // Get single file by path
-      const file = await prisma.file.findUnique({
-        where: { path },
-        include: {
-          sections: { orderBy: { id: 'asc' } },
-          tags: { include: { tag: true } },
-        },
-      })
+  let targetPath: string
+  let query: Record<string, string | undefined> | undefined
 
-      if (!file) {
-        return NextResponse.json({ error: 'File not found' }, { status: 404 })
-      }
-
-      return NextResponse.json({ file })
+  if (action === 'tags') {
+    targetPath = '/tags'
+  } else if (action === 'backlinks') {
+    if (!path) {
+      return NextResponse.json({ detail: 'path is required for backlinks' }, { status: 400 })
     }
+    targetPath = '/backlinks'
+    query = { path }
+  } else if (path) {
+    targetPath = '/file'
+    query = { path }
+  } else {
+    return NextResponse.json(
+      { detail: "Provide 'path' for /file, or use action=tags/backlinks." },
+      { status: 400 }
+    )
+  }
 
-    // List files
-    const whereClause = inbox
-      ? { path: { startsWith: '00_Inbox/' } }
-      : {}
-
-    const files = await prisma.file.findMany({
-      where: whereClause,
-      include: {
-        tags: { include: { tag: true } },
-        sections: { take: 1, orderBy: { id: 'asc' } },
-      },
-      take: limit,
-      orderBy: { createdAt: 'desc' },
+  try {
+    const response = await fetch(buildBackendUrl(targetPath, query), {
+      method: 'GET',
+      headers: buildBackendHeaders(),
+      cache: 'no-store',
     })
 
-    return NextResponse.json({ files })
-  } catch (error) {
-    console.error('Files API error:', error)
-    return NextResponse.json({ error: 'Failed to fetch files' }, { status: 500 })
+    return forwardBackendJson(response)
+  } catch {
+    return NextResponse.json(
+      { detail: `Backend unavailable. Could not fetch ${targetPath}.` },
+      { status: 503 }
+    )
   }
 }

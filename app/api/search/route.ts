@@ -1,61 +1,75 @@
-import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
+import { buildBackendHeaders, buildBackendUrl, forwardBackendJson } from '@/lib/backend-proxy'
+
+function parseLimit(raw: string | null, fallback: number): number {
+  const parsed = Number(raw)
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
+
+  return Math.min(100, Math.max(1, Math.floor(parsed)))
+}
 
 export async function GET(req: NextRequest) {
+  const query = (req.nextUrl.searchParams.get('q') || '').trim()
+  const limit = parseLimit(req.nextUrl.searchParams.get('limit'), 20)
+
+  if (!query) {
+    return NextResponse.json({ detail: 'Query cannot be empty' }, { status: 400 })
+  }
+
   try {
-    const q = req.nextUrl.searchParams.get('q') || ''
-    const limit = parseInt(req.nextUrl.searchParams.get('limit') || '20')
-    const tags = req.nextUrl.searchParams.get('tags')?.split(',').filter(Boolean) || []
-
-    const whereClause: Record<string, unknown> = {}
-
-    if (q) {
-      whereClause.OR = [
-        { title: { contains: q, mode: 'insensitive' } },
-        { path: { contains: q, mode: 'insensitive' } },
-        { sections: { some: { content: { contains: q, mode: 'insensitive' } } } },
-        { sections: { some: { heading: { contains: q, mode: 'insensitive' } } } },
-      ]
-    }
-
-    if (tags.length > 0) {
-      whereClause.tags = {
-        some: {
-          tag: {
-            name: { in: tags },
-          },
-        },
+    const response = await fetch(
+      buildBackendUrl('/search', { q: query, limit }),
+      {
+        method: 'GET',
+        headers: buildBackendHeaders(),
+        cache: 'no-store',
       }
-    }
+    )
 
-    const files = await prisma.file.findMany({
-      where: whereClause,
-      include: {
-        tags: {
-          include: { tag: true },
-        },
-        sections: {
-          take: 1,
-          orderBy: { id: 'asc' },
-        },
-      },
-      take: limit,
-      orderBy: { createdAt: 'desc' },
+    return forwardBackendJson(response)
+  } catch {
+    return NextResponse.json(
+      { detail: 'Backend unavailable. Could not run full-text search.' },
+      { status: 503 }
+    )
+  }
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => null) as {
+    query?: string
+    limit?: number
+    rag_technique?: string
+    ragTechnique?: string
+  } | null
+
+  const query = body?.query?.trim() || ''
+  const limit = parseLimit(typeof body?.limit === 'number' ? String(body.limit) : null, 10)
+  const ragTechnique = body?.rag_technique || body?.ragTechnique || 'hybrid'
+
+  if (!query) {
+    return NextResponse.json({ detail: 'Query cannot be empty' }, { status: 400 })
+  }
+
+  try {
+    const response = await fetch(buildBackendUrl('/search'), {
+      method: 'POST',
+      headers: buildBackendHeaders(),
+      body: JSON.stringify({
+        query,
+        limit,
+        rag_technique: ragTechnique,
+      }),
+      cache: 'no-store',
     })
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const results = files.map((file: any) => ({
-      id: file.id,
-      path: file.path,
-      title: file.title,
-      snippet: file.sections[0]?.content?.slice(0, 200) || '',
-      tags: file.tags.map((ft: { tag: { name: string } }) => ft.tag.name),
-      modifiedAt: file.createdAt,
-    }))
-
-    return NextResponse.json({ results })
-  } catch (error) {
-    console.error('Search error:', error)
-    return NextResponse.json({ error: 'Search failed' }, { status: 500 })
+    return forwardBackendJson(response)
+  } catch {
+    return NextResponse.json(
+      { detail: 'Backend unavailable. Could not run semantic search.' },
+      { status: 503 }
+    )
   }
 }

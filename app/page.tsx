@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
-import { SignInButton, SignUpButton } from '@clerk/nextjs'
 import { prisma } from '@/lib/prisma'
 import { api } from '@/lib/api-client'
 import { SearchBar } from '@/components/SearchBar'
@@ -30,24 +29,32 @@ function countInboxFiles(data: { root_files: unknown[]; folders: { files: unknow
 
 async function getStats() {
   try {
-    const [totalFiles, totalSections, totalTags] = await prisma.$transaction([
-      prisma.file.count(),
-      prisma.section.count(),
-      prisma.tag.count(),
+    const [statsResponse, inboxResponse] = await Promise.all([
+      api.GET('/stats'),
+      api.GET('/inbox/contents'),
     ])
-    
-    // Get inbox count from Python API (same source as inbox page)
-    let inboxCount = 0
-    try {
-      const { data } = await api.GET('/inbox/contents')
-      if (data) {
-        inboxCount = countInboxFiles(data)
+
+    const totalFiles = statsResponse.data?.file_count ?? 0
+    const totalSections = statsResponse.data?.section_count ?? 0
+    const totalTags = statsResponse.data?.tag_count ?? 0
+    const inboxCount = inboxResponse.data ? countInboxFiles(inboxResponse.data) : 0
+
+    // If the backend stats call failed, fall back to mirrored PostgreSQL counts.
+    if (statsResponse.error) {
+      const [fallbackFiles, fallbackSections, fallbackTags] = await prisma.$transaction([
+        prisma.file.count(),
+        prisma.section.count(),
+        prisma.tag.count(),
+      ])
+
+      return {
+        totalFiles: fallbackFiles,
+        totalSections: fallbackSections,
+        totalTags: fallbackTags,
+        inboxCount,
       }
-    } catch {
-      // Fallback to database count if API fails
-      inboxCount = await prisma.file.count({ where: { path: { startsWith: '00_Inbox/' } } })
     }
-    
+
     return { totalFiles, totalSections, totalTags, inboxCount }
   } catch {
     return { totalFiles: 0, totalSections: 0, totalTags: 0, inboxCount: 0 }
@@ -79,7 +86,18 @@ async function getRecentNotes() {
 }
 
 export default async function DashboardPage() {
-  const { userId } = await auth()
+  const authDisabled =
+    process.env.DISABLE_AUTH_FOR_E2E === 'true' ||
+    process.env.NEXT_PUBLIC_DISABLE_AUTH_FOR_E2E === 'true'
+
+  let userId: string | null = null
+
+  if (authDisabled) {
+    userId = 'e2e-user'
+  } else {
+    const authState = await auth()
+    userId = authState.userId
+  }
 
   // Show landing page for signed-out users
   if (!userId) {
@@ -222,7 +240,9 @@ export default async function DashboardPage() {
   )
 }
 
-function LandingPage() {
+async function LandingPage() {
+  const { SignInButton, SignUpButton } = await import('@clerk/nextjs')
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
